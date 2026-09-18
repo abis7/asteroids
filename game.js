@@ -63,18 +63,20 @@ const SPEEDS = [0, 85, 55, 32];   // velocidad base por tamaño
 const POINTS = [0, 100, 50, 20];  // puntos por tamaño
 
 class Asteroid {
-  constructor(x, y, size = 3) {
+  constructor(x, y, size = 3, fugaz = false) {
     this.x    = x;
     this.y    = y;
     this.size = size;
-    this.radius = RADII[size];
+    this.fugaz = fugaz;
+    this.radius = RADII[size] * (fugaz ? 0.85 : 1);
     this.dead = false;
+    this.ttl  = fugaz ? 6 : Infinity;
 
     const angle = rand(0, Math.PI * 2);
-    const speed = SPEEDS[size] + rand(-15, 15);
+    const speed = fugaz ? SPEEDS[size] * 3 + rand(0, 30) : SPEEDS[size] + rand(-15, 15);
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
-    this.rotSpeed = rand(-1.2, 1.2);
+    this.rotSpeed = fugaz ? rand(-3, 3) : rand(-1.2, 1.2);
     this.rot = rand(0, Math.PI * 2);
 
     // Polígono irregular
@@ -91,10 +93,19 @@ class Asteroid {
     this.x   = wrap(this.x + this.vx * dt, W);
     this.y   = wrap(this.y + this.vy * dt, H);
     this.rot += this.rotSpeed * dt;
+
+    // Estrella fugaz: se desvanece al agotar su tiempo
+    if (this.fugaz) {
+      this.ttl -= dt;
+      if (this.ttl <= 0) {
+        this.dead = true;
+        explode(this.x, this.y, 5);
+      }
+    }
   }
 
   split() {
-    if (this.size <= 1) return [];
+    if (this.size <= 1 || this.fugaz) return [];
     return [
       new Asteroid(this.x, this.y, this.size - 1),
       new Asteroid(this.x, this.y, this.size - 1),
@@ -104,6 +115,39 @@ class Asteroid {
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
+
+    if (this.fugaz) {
+      // Parpadeo antes de desaparecer
+      if (this.ttl < 2 && Math.floor(this.ttl * 8) % 2 === 0) { ctx.restore(); return; }
+      ctx.rotate(Math.atan2(this.vy, this.vx));
+      ctx.strokeStyle = '#ff9f0a';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+
+      // Estela trasera en degradado
+      for (let k = 1; k <= 4; k++) {
+        const tail = -k * 14;
+        ctx.strokeStyle = `rgba(255,159,10,${(1 - k * 0.22).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.moveTo(tail, 0);
+        ctx.lineTo(tail - 9, 0);
+        ctx.stroke();
+      }
+
+      // Cuerpo tipo cometa alargado
+      ctx.strokeStyle = '#ff9f0a';
+      ctx.beginPath();
+      ctx.moveTo( 24,  0);
+      ctx.lineTo(-10, -8);
+      ctx.lineTo(-16, -3);
+      ctx.lineTo(-16,  3);
+      ctx.lineTo(-10,  8);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
     ctx.rotate(this.rot);
     ctx.strokeStyle = '#fff';
     ctx.lineWidth   = 1.5;
@@ -305,6 +349,16 @@ function spawnAsteroids(count) {
     } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
     asteroids.push(new Asteroid(x, y, 3));
   }
+
+  // Estrella fugaz ocasional (rápida, desaparece sola)
+  if (Math.random() < 0.4) {
+    let x, y;
+    do {
+      x = rand(0, W);
+      y = rand(0, H);
+    } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
+    asteroids.push(new Asteroid(x, y, 3, true));
+  }
 }
 
 function initGame() {
@@ -383,7 +437,7 @@ function update(dt) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
+        score += a.fugaz ? 150 : POINTS[a.size];
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
         if (powerups.length === 0 && Math.random() < 0.15)

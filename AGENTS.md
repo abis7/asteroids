@@ -13,4 +13,5 @@ There is no test command. To verify changes, open `index.html` directly in a bro
 - **Keypress edge detection**: `justPressed` + `pressed(code)` (`game.js:20-24`) fires once per press and clears itself. Use `pressed()` (not `keys[...]`) for discrete actions like shooting/restart; `keys[...]` only for held state (movement).
 - **State machine**: global `state` is `'playing' | 'dead' | 'gameover'` (`game.js:241`); update branches per state. `dt` is clamped to 0.05s in the loop.
 - **Asteroid sizes**: `RADII`/`SPEEDS`/`POINTS` arrays index by size 3 (large) → 2 → 1 (small) (`game.js:61-63`); `split()` halves size. `POINTS` matches the README scoring table.
+- **Estrella fugaz**: asteroids can be spawned with `fugaz = true` (4th ctor arg) — ~3x faster, `ttl` 6 s (expires with a small explosion, `split()` returns `[]`), flat 150 pts instead of `POINTS[size]`, drawn as an orange comet with a tail. ~40% chance per `spawnAsteroids()`.
 - Code style: `'use strict'`, ES6+ classes, `'use '` box-drawing section-header comments, globals for game state.
