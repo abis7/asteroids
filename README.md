@@ -29,6 +29,11 @@ Luego visita `http://localhost:3000`.
 | `←` `→`   | Rotar nave |
 | `↑`       | Propulsar  |
 | `Espacio` | Disparar   |
+| `S`       | Abrir/cerrar menú de skins |
+
+## Skins
+
+Puedes cambiar la apariencia de la nave (color, silueta y llama del propulsor). Presiona `S` para abrir el menú de skins y navega con `←` `→`; el cambio se aplica en vivo y se guarda en `localStorage`, por lo que persiste entre sesiones. Cierra el menú con `Espacio`, `S` o `Esc`. Las skins actuales: **Clásica**, **Arpón**, **Cañonera**, **Cometa** y **Halcón**.
 
 ## Puntuación
 
