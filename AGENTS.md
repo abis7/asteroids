@@ -14,4 +14,5 @@ There is no test command. To verify changes, open `index.html` directly in a bro
 - **State machine**: global `state` is `'playing' | 'dead' | 'gameover'` (`game.js:241`); update branches per state. `dt` is clamped to 0.05s in the loop.
 - **Asteroid sizes**: `RADII`/`SPEEDS`/`POINTS` arrays index by size 3 (large) → 2 → 1 (small) (`game.js:61-63`); `split()` halves size. `POINTS` matches the README scoring table.
 - **Estrella fugaz**: asteroids can be spawned with `fugaz = true` (4th ctor arg) — ~3x faster, `ttl` 6 s (expires with a small explosion, `split()` returns `[]`), flat 150 pts instead of `POINTS[size]`, drawn as an orange comet with a tail. ~40% chance per `spawnAsteroids()`.
+- **Power-ups**: only one power-up on screen at a time; spawned at 15% per asteroid destroyed. Two types, ~50/50: `'speed'` (orange `>>`, ship 2x thrust, cyan ship) and `'triple'` (magenta fan icon, ship fires 3 spread bullets ±0.15 rad, magenta ship). Both last 5 s via `ship.speedBoost`/`ship.tripleShot`; HUD bars via `drawBoostBar()` (`game.js`).
 - Code style: `'use strict'`, ES6+ classes, `'use '` box-drawing section-header comments, globals for game state.

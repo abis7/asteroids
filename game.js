@@ -190,26 +190,44 @@ class PowerUp {
     // Parpadeo cerca de expirar
     if (this.ttl < 2 && Math.floor(this.ttl * 8) % 2 === 0) return;
     const r = this.radius + Math.sin(this.pulse) * 2;
+    const color = this.type === 'triple' ? '#ff4fd8' : '#ff9f0a';
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.strokeStyle = '#ff9f0a';
-    ctx.fillStyle   = '#ff9f0a';
+    ctx.strokeStyle = color;
+    ctx.fillStyle   = color;
     ctx.lineWidth   = 2;
     ctx.lineJoin    = 'round';
     // Anillo exterior pulsante
+    const [rr, gg, bb] = this.type === 'triple' ? [255, 79, 216] : [255, 159, 10];
     ctx.beginPath();
     ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,159,10,0.28)';
+    ctx.strokeStyle = `rgba(${rr},${gg},${bb},0.28)`;
     ctx.beginPath();
     ctx.arc(0, 0, r + 10, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = '#ff9f0a';
-    // Doble flecha ">>" (velocidad)
-    ctx.beginPath();
-    ctx.moveTo(-6, -6); ctx.lineTo(2, 0); ctx.lineTo(-6, 6);
-    ctx.moveTo( 1, -6); ctx.lineTo(9, 0); ctx.lineTo( 1, 6);
-    ctx.stroke();
+    ctx.strokeStyle = color;
+    if (this.type === 'triple') {
+      // Tres flechas en abanico (triple disparo)
+      for (let k = -1; k <= 1; k++) {
+        ctx.beginPath();
+        ctx.moveTo(k * 5, 0);
+        ctx.lineTo(k * 5 + 8, -6);
+        ctx.moveTo(k * 5, 0);
+        ctx.lineTo(k * 5 + 8, 6);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(-3, 0);
+      ctx.lineTo(3, 0);
+      ctx.stroke();
+    } else {
+      // Doble flecha ">>" (velocidad)
+      ctx.beginPath();
+      ctx.moveTo(-6, -6); ctx.lineTo(2, 0); ctx.lineTo(-6, 6);
+      ctx.moveTo( 1, -6); ctx.lineTo(9, 0); ctx.lineTo( 1, 6);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }
@@ -229,6 +247,7 @@ class Ship {
     this.invincible    = 3;
     this.shootCooldown = 0;
     this.speedBoost    = 0;
+    this.tripleShot    = 0;
     this.dead          = false;
   }
 
@@ -237,6 +256,7 @@ class Ship {
     if (this.invincible    > 0) this.invincible    -= dt;
     if (this.shootCooldown > 0) this.shootCooldown -= dt;
     if (this.speedBoost    > 0) this.speedBoost    -= dt;
+    if (this.tripleShot    > 0) this.tripleShot    -= dt;
 
     const ROT   = 3.5;   // rad/s
     const THRUST = this.speedBoost > 0 ? 520 : 260;  // px/s² (x2 con power-up)
@@ -263,6 +283,14 @@ class Ship {
     const NOSE = 21;
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
+    if (this.tripleShot > 0) {
+      const SPREAD = 0.15;
+      return [
+        new Bullet(ox, oy, this.angle - SPREAD),
+        new Bullet(ox, oy, this.angle),
+        new Bullet(ox, oy, this.angle + SPREAD),
+      ];
+    }
     return [new Bullet(ox, oy, this.angle)];
   }
 
@@ -274,7 +302,8 @@ class Ship {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = this.speedBoost > 0 ? '#4dd8ff' : '#fff';
+    ctx.strokeStyle = this.speedBoost > 0 ? '#4dd8ff'
+                    : this.tripleShot > 0 ? '#ff4fd8' : '#fff';
     ctx.lineWidth   = 1.5;
     ctx.lineJoin    = 'round';
 
@@ -440,8 +469,10 @@ function update(dt) {
         score += a.fugaz ? 150 : POINTS[a.size];
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
-        if (powerups.length === 0 && Math.random() < 0.15)
-          powerups.push(new PowerUp(a.x, a.y));
+        if (powerups.length === 0 && Math.random() < 0.15) {
+          const type = Math.random() < 0.5 ? 'speed' : 'triple';
+          powerups.push(new PowerUp(a.x, a.y, type));
+        }
       }
     }
   }
@@ -453,7 +484,8 @@ function update(dt) {
   for (const p of powerups) {
     if (!p.dead && dist(ship, p) < ship.radius + p.radius) {
       p.dead = true;
-      ship.speedBoost = 5;
+      if (p.type === 'triple') ship.tripleShot = 5;
+      else ship.speedBoost = 5;
       explode(p.x, p.y, 6);
     }
   }
@@ -491,6 +523,18 @@ function drawLifeIcon(x, y) {
   ctx.restore();
 }
 
+function drawBoostBar(label, remaining, max, color, y) {
+  const BAR_W = 80;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(14, y, BAR_W, 5);
+  ctx.fillStyle = color;
+  ctx.fillRect(14, y, BAR_W * Math.max(remaining / max, 0), 5);
+  ctx.fillStyle = '#fff';
+  ctx.font = '11px monospace';
+  ctx.fillText(label, 14, y + 15);
+  ctx.font = '15px monospace';
+}
+
 function drawHUD() {
   ctx.fillStyle = '#fff';
   ctx.font = '15px monospace';
@@ -498,18 +542,10 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.fillText(`SCORE  ${score}`, 14, 26);
 
-  // Barra de power-up "velocidad" activo
-  if (ship.speedBoost > 0) {
-    const BAR_W = 80;
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.fillRect(14, 40, BAR_W, 5);
-    ctx.fillStyle = '#ff9f0a';
-    ctx.fillRect(14, 40, BAR_W * Math.max(ship.speedBoost / 5, 0), 5);
-    ctx.fillStyle = '#fff';
-    ctx.font = '11px monospace';
-    ctx.fillText('VELOCIDAD', 14, 55);
-    ctx.font = '15px monospace';
-  }
+  // Barras de power-ups activos
+  if (ship.speedBoost > 0)   drawBoostBar('VELOCIDAD', ship.speedBoost, 5, '#ff9f0a', 40);
+  if (ship.tripleShot > 0)   drawBoostBar('TRIPLE', ship.tripleShot, 5, '#ff4fd8',
+                                          ship.speedBoost > 0 ? 68 : 40);
 
   ctx.textAlign = 'center';
   ctx.fillText(`NIVEL ${level}`, W / 2, 26);
