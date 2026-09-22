@@ -41,5 +41,6 @@ Luego visita `http://localhost:3000`.
 ## Características
 
 - 3 vidas con invencibilidad temporal al reaparecer (parpadeo)
+- Power-ups: de velocidad (impulso x2) y escudo temporal que neutraliza impactos de asteroides (ambos con barra en el HUD)
 - Asteroides se parten en fragmentos más pequeños al ser destruidos
 - Partículas de explosión al destruir asteroides
